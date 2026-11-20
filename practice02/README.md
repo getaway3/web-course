@@ -10,7 +10,8 @@ python -m pip install -r requirements.txt
 python -m uvicorn main:app --reload
 ```
 
-Swagger UI: http://127.0.0.1:8000/docs (скриншот: `docs/swagger-ui.jpg`).
+Swagger UI: http://127.0.0.1:8000/docs. Скриншоты: `docs/swagger-endpoints.png` (все endpoints в Swagger UI),
+`docs/swagger-schemas-pydantic.png` (модели Pydantic `Pet`, `PetCreate`, `Veterinarian`, `VeterinarianCreate` в разделе Schemas).
 Тесты: `pip install pytest httpx && pytest` (6 тестов).
 
 ## Endpoints
