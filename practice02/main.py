@@ -23,6 +23,9 @@ class Veterinarian(VeterinarianCreate):
 
 
 class PetCreate(BaseModel):
+    # Пример тела запроса в Swagger UI: без veterinarian_id (иначе Swagger подставит 0 и получится 404)
+    model_config = {"json_schema_extra": {"examples": [{"name": "Мурка", "species": "Кошка", "age": 1}]}}
+
     name: str = Field(min_length=1, examples=["Барсик"])
     species: str = Field(min_length=1, examples=["Кошка"])
     age: int = Field(ge=0, le=60, examples=[3])

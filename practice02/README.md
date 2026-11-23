@@ -29,8 +29,9 @@ Swagger UI: http://127.0.0.1:8000/docs. Скриншоты: `docs/swagger-endpoi
 
 ## Анализ HTTP (DevTools → Network)
 
-Значения ниже сняты с реального сервера (`uvicorn`, запросы curl и `fetch` из браузера).
-Для отчёта повтори запросы в Swagger UI с открытой вкладкой **F12 → Network** и сделай скриншот.
+GET-запрос снят в **F12 → Network** браузера (скриншоты `docs/devtools-get-headers.png` и
+`docs/devtools-get-response.png`); значения POST (201) сняты с реального сервера запросом curl.
+Запросы выполнялись из Swagger UI (кнопка Try it out → Execute).
 
 ### GET `/pets/1`
 
@@ -39,8 +40,8 @@ Swagger UI: http://127.0.0.1:8000/docs. Скриншоты: `docs/swagger-endpoi
 | HTTP Method | GET |
 | Request URL | http://127.0.0.1:8000/pets/1 |
 | Status Code | 200 OK |
-| Request Headers | `Host: 127.0.0.1:8000`, `User-Agent: curl/8.7.1` (в браузере: свой User-Agent), `Accept: */*` |
-| Response Headers | `content-type: application/json`, `content-length: 81`, `server: uvicorn`, `date: …` |
+| Request Headers | `Accept: */*`, `Accept-Encoding: gzip, deflate, br, zstd`, `Accept-Language: ru,en;q=0.9`, `Connection: keep-alive`, `Host: 127.0.0.1:8000`, `Referer: http://127.0.0.1:8000/docs`, `Sec-Fetch-Mode: cors`, `User-Agent: …` (браузера) |
+| Response Headers | `Content-Type: application/json`, `Content-Length: 81`, `Server: uvicorn`, `Date: Fri, 20 Nov 2026 23:46:20 GMT` |
 | Response Body | `{"name":"Барсик","species":"Кошка","age":3,"veterinarian_id":1,"id":1}` |
 
 ### POST `/pets`
@@ -56,6 +57,11 @@ Swagger UI: http://127.0.0.1:8000/docs. Скриншоты: `docs/swagger-endpoi
 | Response Body | `{"name":"Murka","species":"Cat","age":1,"veterinarian_id":null,"id":4}` |
 
 Ошибка для сравнения: GET `/pets/999` → **404 Not Found**, тело `{"detail":"Pet with id=999 not found"}`.
+
+Ошибка, пойманная в DevTools: POST `/pets` с `"veterinarian_id": 0` → **404 Not Found**, тело
+`{"detail":"Veterinarian with id=0 not found"}` (такого ветеринара нет, API проверяет связь). Скриншоты:
+`docs/devtools-post-error404-general.png`, `docs/devtools-post-error404-request-headers.png`.
+Пример тела запроса в Swagger теперь подставляется без `veterinarian_id`, поэтому POST по умолчанию возвращает 201.
 
 ## Контрольные вопросы (кратко)
 
