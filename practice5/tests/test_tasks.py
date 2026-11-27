@@ -1,4 +1,4 @@
-"""Проверка, что API после рефакторинга работает: POST /tasks/ и GET /tasks/.
+"""Проверка, что API после рефакторинга работает так же, как в ПР4: POST/GET/PUT/DELETE /tasks.
 Тесты используют SQLite в памяти вместо PostgreSQL (подмена зависимости get_session).
 """
 import pytest
@@ -28,7 +28,8 @@ def client():
 
 def test_routes_are_registered(client):
     paths = client.get("/openapi.json").json()["paths"]
-    assert "get" in paths["/tasks/"] and "post" in paths["/tasks/"]
+    assert set(paths["/tasks/"]) == {"get", "post"}
+    assert set(paths["/tasks/{task_id}"]) == {"get", "put", "delete"}
 
 
 def test_get_empty(client):
@@ -38,10 +39,19 @@ def test_get_empty(client):
 
 def test_post_then_get(client):
     r = client.post("/tasks/", json={"title": "Изучить архитектуру FastAPI", "completed": False})
-    assert r.status_code == 200
+    assert r.status_code == 201
     created = r.json()
     assert created == {"id": 1, "title": "Изучить архитектуру FastAPI", "completed": False}
     assert client.get("/tasks/").json() == [created]
+    assert client.get("/tasks/1").json() == created
+
+
+def test_update_and_delete(client):
+    client.post("/tasks/", json={"title": "задача"})
+    r = client.put("/tasks/1", json={"title": "задача", "completed": True})
+    assert r.status_code == 200 and r.json()["completed"] is True
+    assert client.delete("/tasks/1").status_code == 200
+    assert client.get("/tasks/1").status_code == 404
 
 
 def test_completed_defaults_to_false(client):

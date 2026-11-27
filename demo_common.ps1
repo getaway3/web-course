@@ -40,16 +40,39 @@ function Stop-Server {
         ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-Sleep -Milliseconds 700
 }
-function Start-Server($dir, $module) {
+$ServerLog = Join-Path $env:TEMP "demo_server_err.log"
+$ServerLogOut = Join-Path $env:TEMP "demo_server_out.log"
+function Start-Server($dir, $module, [switch]$Log) {
     Stop-Server
-    Start-Process -FilePath $py -ArgumentList @("-m", "uvicorn", $module, "--port", "8000") `
-        -WorkingDirectory $dir -WindowStyle Minimized
-    for ($i = 0; $i -lt 25; $i++) {
+    if ($Log) {
+        Remove-Item $ServerLog, $ServerLogOut -ErrorAction SilentlyContinue
+        Start-Process -FilePath $py -ArgumentList @("-m", "uvicorn", $module, "--port", "8000") `
+            -WorkingDirectory $dir -WindowStyle Hidden -RedirectStandardError $ServerLog -RedirectStandardOutput $ServerLogOut
+    } else {
+        Start-Process -FilePath $py -ArgumentList @("-m", "uvicorn", $module, "--port", "8000") `
+            -WorkingDirectory $dir -WindowStyle Minimized
+    }
+    for ($i = 0; $i -lt 30; $i++) {
         Start-Sleep -Milliseconds 600
         try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 "$Base/openapi.json" | Out-Null; return $true } catch { }
     }
     Write-Host "Сервер не запустился. Закрой другие окна с серверами и запусти показ ещё раз." -ForegroundColor Red
     return $false
+}
+function Read-Shared($path) {
+    # читает файл, который в этот момент ещё пишет сервер
+    if (-not (Test-Path $path)) { return @() }
+    $fs = [System.IO.File]::Open($path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    try { $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::UTF8); return ($sr.ReadToEnd() -split "`r?`n") }
+    finally { $fs.Close() }
+}
+function Show-SqlLog {
+    # SQL-запросы, которые SQLAlchemy написала сама (echo=True) и записала в журнал сервера
+    Start-Sleep -Milliseconds 800
+    $lines = @(Read-Shared $ServerLogOut) + @(Read-Shared $ServerLog)
+    $lines | Where-Object { $_ -match 'INFO sqlalchemy.engine.Engine (INSERT INTO|SELECT tasks|UPDATE tasks|DELETE FROM)' } |
+        ForEach-Object { ($_ -replace '^[0-9-]+ [0-9:,]+ INFO sqlalchemy.engine.Engine ', '') } |
+        ForEach-Object { Write-Host ("  " + $_) -ForegroundColor White }
 }
 
 function Api($method, $path, $json = $null) {

@@ -1,6 +1,7 @@
 # Практическая работа №5. Рефакторинг FastAPI-приложения
 
-Приложение разделено по ответственности. API не изменился: `POST /tasks/` и `GET /tasks/`.
+Приложение из ПР4 (всё в одном `main.py`) разделено по ответственности. API не изменился: те же адреса `/tasks`
+(обязательные по методичке `POST /tasks/` и `GET /tasks/`, а также `GET /tasks/{id}`, `PUT /tasks/{id}`, `DELETE /tasks/{id}`).
 
 ## Структура
 ```
@@ -13,7 +14,7 @@ practice5/
 │   ├── schemas.py       # Pydantic-схемы TaskCreate / TaskRead
 │   └── routers/
 │       ├── __init__.py
-│       └── tasks.py     # GET /tasks/, POST /tasks/
+│       └── tasks.py     # все endpoints /tasks: GET, POST, GET по id, PUT, DELETE
 ├── tests/test_tasks.py  # проверка API на SQLite в памяти
 ├── docker-compose.yml, create_tables.sql, insert_data.sql   # PostgreSQL из практики №3
 ├── requirements.txt, requirements-dev.txt
@@ -25,9 +26,9 @@ practice5/
 docker compose up -d
 docker compose ps
 pip install -r requirements.txt
-uvicorn app.main:app --reload          # запускать из корня practice5/
+python -m uvicorn app.main:app --reload   # запускать из корня practice5/ (раньше было main:app)
 ```
-Swagger: http://127.0.0.1:8000/docs – должны быть `POST /tasks/` и `GET /tasks/`.
+Swagger: http://127.0.0.1:8000/docs – должны быть `POST /tasks/`, `GET /tasks/`, `GET /tasks/{id}`, `PUT /tasks/{id}`, `DELETE /tasks/{id}`.
 
 Пример тела POST:
 ```json
@@ -63,5 +64,5 @@ Router группирует связанные HTTP-эндпоинты (здес
 а запросы к ним вернут 404.
 
 **6. Изменился ли API после рефакторинга?**
-Нет. Остались те же пути и методы (`POST /tasks/`, `GET /tasks/`), те же входные и выходные данные.
+Нет. Остались те же пути и методы (`POST`, `GET`, `PUT`, `DELETE` для `/tasks`), те же входные и выходные данные; тесты `tests/test_tasks.py` это проверяют.
 Изменилась только внутренняя структура кода: код перенесён из одного файла в модули.

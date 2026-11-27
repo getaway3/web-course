@@ -1,38 +1,51 @@
 # Практическая работа №4. SQLAlchemy ORM
 
-Продолжение практики №3: та же PostgreSQL в Docker (порт 54329). По методичке ПР4 работа ведётся с таблицей `tasks`
-(`id SERIAL`, `title VARCHAR(255)`, `completed BOOLEAN`); она создаётся скриптами `create_tables.sql` и `insert_data.sql` этой папки.
-В ПР3 использовалась таблица `pets` по варианту (Pet Clinic), в ПР4–5 – `tasks`, как требует методичка.
+Выполнила: Акобян Г.П., гр. ВМО42. Продолжение ПР3: та же PostgreSQL в Docker (порт 54329), тот же FastAPI-проект,
+но вместо ручного SQL (`cursor.execute`) используется **SQLAlchemy ORM**.
+
+По методичке ПР4 работа ведётся с таблицей `tasks` (`id SERIAL`, `title VARCHAR(255)`, `completed BOOLEAN`); она создаётся
+скриптами `create_tables.sql` и `insert_data.sql` этой папки. В ПР3 была таблица `pets` по варианту, в ПР4–5 – `tasks`, как требует методичка.
+
+## Структура
+```
+practice4/
+├── main.py              # ВСЁ в одном файле: FastAPI-приложение, подключение, модель Task, схемы, endpoints
+├── crud_demo.py         # консольная демонстрация CRUD через ORM (дополнительно)
+├── tests/test_tasks.py  # проверка API на SQLite в памяти (без PostgreSQL)
+├── docker-compose.yml, create_tables.sql, insert_data.sql
+├── requirements.txt
+└── README.md
+```
+Именно такое состояние («всё в `main.py`») рефакторится в ПР5.
 
 ## Запуск
 ```bash
 docker compose up -d
 pip install -r requirements.txt
-python main.py
+python -m uvicorn main:app --reload   # Swagger: http://127.0.0.1:8000/docs
 ```
+SQL-запросы выводятся в консоль сервера (`echo=True`). Тесты: `pip install pytest httpx && pytest`.
 
-## Что реализовано (`main.py`)
-| Требование | Где |
-|---|---|
-| `create_engine(..., echo=True)` | `engine` |
-| модель на `DeclarativeBase`, `Mapped`, `mapped_column` | класс `Task` |
-| работа через `Session`, без `cursor.execute` | `with Session(engine) as session` |
-| CREATE | `session.add(task); session.commit()` |
-| READ | `session.get(Task, id)` и `session.scalars(select(Task)).all()` |
-| UPDATE | `task.completed = True; session.commit()` |
-| DELETE | `session.delete(task); session.commit()` |
+## Endpoints и соответствие CRUD
+| Операция | Endpoint | ORM-код | Ответ |
+|---|---|---|---|
+| CREATE | `POST /tasks` | `session.add(task); session.commit()` | 201 |
+| READ (список) | `GET /tasks` | `session.scalars(select(Task)).all()` | 200 |
+| READ (одна) | `GET /tasks/{id}` | `session.get(Task, id)` | 200 или 404 |
+| UPDATE | `PUT /tasks/{id}` | `task.completed = ...; session.commit()` | 200 или 404 |
+| DELETE | `DELETE /tasks/{id}` | `session.delete(task); session.commit()` | 200 или 404 |
 
-Демонстрация создаёт новую задачу, читает, изменяет и удаляет именно её – исходные 5 записей остаются нетронутыми.
+Используется SQLAlchemy 2.x: `DeclarativeBase`, `Mapped`, `mapped_column`, `create_engine(..., echo=True)`, `Session`.
+`cursor.execute(...)` для таблицы `tasks` не используется.
 
-## Примеры SQL, сформированного SQLAlchemy (вывод `echo=True`)
-Вставьте в отчёт фрагменты из консоли после запуска (не менее двух). Вид запросов:
+## Примеры SQL, сформированного SQLAlchemy (вывод `echo=True` в консоли сервера)
 ```
-INSERT INTO tasks (title, completed) VALUES (%(title)s, %(completed)s) RETURNING tasks.id
-SELECT tasks.id, tasks.title, tasks.completed FROM tasks WHERE tasks.id = %(pk_1)s
-UPDATE tasks SET completed=%(completed)s WHERE tasks.id = %(tasks_id)s
-DELETE FROM tasks WHERE tasks.id = %(id)s
+INSERT INTO tasks (title, completed) VALUES (%(title)s::VARCHAR, %(completed)s) RETURNING tasks.id
+SELECT tasks.id, tasks.title, tasks.completed FROM tasks WHERE tasks.id = %(pk_1)s::INTEGER
+UPDATE tasks SET completed=%(completed)s WHERE tasks.id = %(tasks_id)s::INTEGER
+DELETE FROM tasks WHERE tasks.id = %(id)s::INTEGER
 ```
-(точные имена параметров зависят от версии SQLAlchemy).
+Схема работы: Python (`session.get`) → SQLAlchemy → SQL → PostgreSQL.
 
 ## Разница между `cursor.execute(...)` и `session.get(...)`
 В первом случае разработчик сам пишет SQL. Во втором он работает с объектом модели `Task`,
